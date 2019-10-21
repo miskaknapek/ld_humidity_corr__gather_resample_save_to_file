@@ -138,7 +138,8 @@ class gather_resample_metMo_data_make_csv:
 	fetched_sql_data_as_a_pd_dataframe = -4 
 
 	# from the sql data
-	num_of_unique_sensor_ids = 781 
+	unique_location_ids = 781
+	num_of_unique_location_ids = 781
 
 	# in between fast storage of resampled data
 	resampled_data_as_np_array = -1 
@@ -233,6 +234,7 @@ class gather_resample_metMo_data_make_csv:
 
 
 
+
 	def check_date_string_validity_and_return_pd_timestmp_if_valid( self, in_date_to_test ):
 		print( "\n>>>> check_date_string_validity_and_return_pd_timestmp_if_valid() - checking in_date : |"+str( in_date_to_test )+"|" )
 
@@ -300,21 +302,21 @@ class gather_resample_metMo_data_make_csv:
 		return midnight_timestamp_from_today
 
 
+
+
 	# --- --- data! 
-
-
 
 	# setup data holding object(s) in regards to num or samples and columns … 
 	def setup_out_data_objects__according_to_sample_length_and_desired_columns( self ):
 		print("\n>>>> setup_out_data_objects__according_to_sample_length_and_desired_columns() ")
 
 		# make basic array 
-		self.resampled_data_as_np_array = np.array( np.zeros( len( self.gathered_desired_data_columns ) *  self.num_of_unique_sensor_ids * self.num_of_sample_time_periods_fit_in_total_sampled_period  ) )
+		self.resampled_data_as_np_array = np.array( np.zeros( len( self.gathered_desired_data_columns ) *  self.num_of_unique_location_ids * self.num_of_sample_time_periods_fit_in_total_sampled_period  ) )
 
-		print( "--- got self.num_of_sample_time_periods_fit_in_total_sampled_period = "+str(self.num_of_sample_time_periods_fit_in_total_sampled_period)+" | len( self.gathered_desired_data_columns ) = "+str( len( self.gathered_desired_data_columns ) )+" | self.num_of_unique_sensor_ids : "+str( self.num_of_unique_sensor_ids )+" == array length of "+str( self.resampled_data_as_np_array.shape ) )
+		print( "--- got self.num_of_sample_time_periods_fit_in_total_sampled_period = "+str(self.num_of_sample_time_periods_fit_in_total_sampled_period)+" | len( self.gathered_desired_data_columns ) = "+str( len( self.gathered_desired_data_columns ) )+" | self.num_of_unique_location_ids : "+str( self.num_of_unique_location_ids )+" == array length of "+str( self.resampled_data_as_np_array.shape ) )
 
 		# reshape 
-		self.resampled_data_as_np_array  = self.resampled_data_as_np_array.reshape( [ len( self.gathered_desired_data_columns ),self.num_of_unique_sensor_ids, self.num_of_sample_time_periods_fit_in_total_sampled_period ] )
+		self.resampled_data_as_np_array  = self.resampled_data_as_np_array.reshape( [ len( self.gathered_desired_data_columns ),self.num_of_unique_location_ids, self.num_of_sample_time_periods_fit_in_total_sampled_period ] )
 
 		#
 		print("\t --- and this reshaped looks like this : "+str( self.resampled_data_as_np_array.shape ))
@@ -382,8 +384,13 @@ class gather_resample_metMo_data_make_csv:
 
 		# --- --- code goes here 
 
+		# --- setup psql connection 
+		self.setup_psql_connection()
+
+		# --- and then…
+
 		# generate sql query 
-		self.generate_sql_query_string()
+		self.gsenerate_sql_query_string()
 
 		mini_timing = time.time() 
 		cur.execute( self.sql_query )
@@ -394,20 +401,22 @@ class gather_resample_metMo_data_make_csv:
 
 		self.print2("\n --- --- got table of shape "+str( in_data.shape )+" "+str( time.time() - mini_timing ) )    
 		self.print2("--- --- got columns : |"+str( in_data.columns)+"|" )
-		# --- POST READ DATA : set up data - timestamps and all! 
 
-		# next step 
+		# --- finnisage! 
+		print("|||| and all that took "+str( time.time() - starttime)+" ms ")
+
+		# ------- next step 
 		self.setup_timestamp_columns__set_index__sort_by_index()
 
 
 
 
 	# load data from local TEST file - for testing wihout net connection! 
-	def load_data_from_csv( self ):
+	def load_data_from_csv__convert_to_pd_dataframe( self ):
 		print(">>>> load_data_from_csv() ")
 		starttime = time.time() 
-		# -----
 
+		# ----- go 
 
 		self.fetched_sql_data_as_a_pd_dataframe = pd.read_csv( self.url__relative_to_this_file__met_no_sensors_data_table_dump )		
 
@@ -444,6 +453,51 @@ class gather_resample_metMo_data_make_csv:
 
 
 
+	def get_statistics_on_lat_lon_lengths( self ):
+		print("--- get_statistics_on_lat_lon_lengths ")
+
+		starttime = time.time()
+
+		latlon_list = list( self.fetched_sql_data_as_a_pd_dataframe['lat'] ) + list( self.fetched_sql_data_as_a_pd_dataframe['lon'] )
+
+		latlon_len_list = []
+
+		# get decimal lengths 
+		for item in latlon_list:
+			latlon_len_list.append( len(  str( item ).split(".")[1] )  )
+
+		# make decimals counter 
+		lengths = [0]*10
+
+		for item in latlon_len_list:
+			lengths[item] = lengths[item] + 1
+
+		print("--- and the lengths looks like this : |"+str( lengths )+"|")
+
+		# now get the relevant multiplier remove the decimal on all numbers
+
+		#
+		largest_num = max( lengths )
+
+		#
+		index_of_largest_num = lengths.index( largest_num )
+
+		#
+		self.multipler_to_remove_decimal_point_for_largest_found_num_of_decimals = 10**index_of_largest_num
+
+		print("--- self.multipler_to_remove_decimal_point_for_largest_found_num_of_decimals : "+str( self.multipler_to_remove_decimal_point_for_largest_found_num_of_decimals) )
+
+		# --- finnisage! 
+		latlon_list = 0
+		latlon_len_list = 0
+
+		print("|||| and all that took "+str( time.time() - starttime)+" ms ")
+
+
+
+
+
+
 	# make a column with unique lat/lon names 
 	# - so you can find the unique lat lon combinations … and save them!
 	# 		( not in the least to get the number of sensors… which is then used to format the data )
@@ -457,10 +511,51 @@ class gather_resample_metMo_data_make_csv:
 
 		# ----- code 
 
+		# find out how big that multiplier for each column should be … 
+		## self.get_statistics_on_lat_lon_lengths()
 
+
+		# make that unique column … of unique identifiers, based on latlon combinations 
+
+		self.fetched_sql_data_as_a_pd_dataframe['latlon_identifiers'] =  self.fetched_sql_data_as_a_pd_dataframe['lat'].map( str ) +  self.fetched_sql_data_as_a_pd_dataframe['lon'].map( str )
+
+		# unique latlon identifiers
+		self.unique_location_ids = self.fetched_sql_data_as_a_pd_dataframe['latlon_identifiers'].unique()
+
+		# count them :) 
+		self.num_of_unique_location_ids =  self.unique_location_ids.shape[0]
 
 		# ----- finnisage! 
-		print("|||| and all that took "+str( time.time() - starttime)+" ms ")		
+		print("|||| and all that took "+str( time.time() - starttime)+" ms ")	
+
+
+
+
+	def speedtest_fetching_unique_rows( self ): 
+		print(">>>> speedtest_fetching_unique_rows() ")	
+
+		# prerequisite
+		self.create_unique_concatenated_latlon_string_column()
+
+		# speed testing … 
+		starttime = time.time() 
+
+		# --- and some code 
+
+		self.TESTS_row_length_count = []
+
+		for curr_latlon_identifier in self.unique_location_ids:
+			self.TESTS_row_length_count.append(  self.fetched_sql_data_as_a_pd_dataframe[ self.fetched_sql_data_as_a_pd_dataframe['latlon_identifiers'] == curr_latlon_identifier ]   )
+
+		# ----- finnisage! 
+		print("|||| and all that took "+str( time.time() - starttime)+" ms ")	
+
+
+
+	def remove_decimals_of_given_num( self, num_as_str ):
+		splitted = num_as_str.split(".")
+		return int( "".join( splitted) ) 
+
 
 
 
@@ -530,8 +625,18 @@ class gather_resample_metMo_data_make_csv:
 		# figure out whether we're doing since-midnight, or the whole day 
 		self.check_which_kind_of_time_period_were_doing_accoding_to_command_line_arguments()
 
+		#
+		self.generate_sql_query_string()
+
 		# find the number of sample length periods in given time period 
 		self.find_num_of_sample_periods_that_will_fit_in_start_to_end_time_period()
+
+		# for testing … load data from disk 
+		self.load_data_from_csv__convert_to_pd_dataframe()
+
+		# get the unique lat/lon pairs… ie find out number of different locations. 
+		# - good thing for setting up appropriately sized data out numpy arrays
+		##### self.setup_timestamp_columns__set_index__sort_by_index()
 
 		# setup out arrays (object) accordingly to sample lengths and number of columns 
 		self.setup_out_data_objects__according_to_sample_length_and_desired_columns()

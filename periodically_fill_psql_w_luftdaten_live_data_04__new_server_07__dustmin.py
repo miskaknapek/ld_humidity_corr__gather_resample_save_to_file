@@ -39,6 +39,7 @@ print(">>>>>>>  Starting soon! filling your psql db with luftdaten data periodic
 
 # connect to db
 conn = psycopg2.connect("dbname='ld_realtime_data_02' user='postgres' password='secret' host='localhost' ")
+# conn = psycopg2.connect("dbname='met_no_data' user='postgres' password='secret' host='localhost' ")
 # conn = psycopg2.connect("dbname='ld_realtime_data' user='postgres' password='secret' host='localhost' ")
 
 print("--- connected to database! ")
