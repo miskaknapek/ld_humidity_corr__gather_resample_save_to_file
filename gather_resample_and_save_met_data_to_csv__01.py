@@ -144,9 +144,16 @@ class gather_resample_metMo_data_make_csv:
 	resampled_data_as_np_array = -1 
 
 
-	# -- Filenames
+	# ---   DATA URLS 
 
 	basic_file_path_to_final_file = "/mnt/virtio-bbc6cf3a-042b-4410-9/luftdaten/luftdaten_daten/tabular_data/tabular_ld_data_TEST_AREA/"
+
+	# DATA URL - sensors database table dump as csv 
+	url__relative_to_this_file__met_no_sensors_data_table_dump = "sample_met_no_data/met_no_formatted_data__test_out_20191020_01.csv"
+	
+
+	# REMOTE DIRECTORY FOR FILES 
+	remote_server_destination_directory_SCP_url = "sourisr@kapsi.fi:sites/sourisr.kapsi.fi/www/luftdaten/luftDaten_data_explorations/ld_daten_various/tabular_ld_data__480_s_intervals/"
 
 
 	# filename beginning for files about the laest data
@@ -158,20 +165,8 @@ class gather_resample_metMo_data_make_csv:
 	file_name_suffix = ".json"
 
 
-	# --   DATA URLS 
 
 
-	nordic_midnight_24_hrs_data__url = "/Users/miska/Documents/open_something/luftdaten/luftdaten_code/luftdaten__make_tabular_data__from_db_data/ld_NYE_midnight_24hrs_nordics_all_data_01.csv"
-	## nordic_midnight_24_hrs_data__url = "/home/miska/documents/opensomething/luftdaten/dustmin_to_csv__various_code/ld_NYE_midnight_24hrs_nordics_all_data_01.csv"
-	# nordic_midnight_24_hrs_data__url = "/Users/miska/temp_temp_temp/sds011_files_wo_microsecond_nulling/2018-09_sds011.csv_cleaned.csv"
-	nordic_midnight_24_hrs_data__url = "/mnt/virtio-bbc6cf3a-042b-4410-9/luftdaten/luftdaten_daten/2019-01_sds011.csv_cleaned__FIRST_500k.csv"
-
-	# DATA URL 
-	curr_url = nordic_midnight_24_hrs_data__url
-
-
-	# REMOTE DIRECTORY FOR FILES 
-	remote_server_destination_directory_SCP_url = "sourisr@kapsi.fi:sites/sourisr.kapsi.fi/www/luftdaten/luftDaten_data_explorations/ld_daten_various/tabular_ld_data__480_s_intervals/"
 
 
 	# ============================  METHODS ============================
@@ -194,7 +189,7 @@ class gather_resample_metMo_data_make_csv:
 		# --- --- --- code goes here 
 
 		# ---------- finnnisage 
-		print("|||| and that took "+str( time.time() - starttime)+" ms ")
+		print("|||| and all that took "+str( time.time() - starttime)+" ms ")
 
 
 	# -------------- **real**  methods :)  **real**
@@ -314,12 +309,12 @@ class gather_resample_metMo_data_make_csv:
 		print("\n>>>> setup_out_data_objects__according_to_sample_length_and_desired_columns() ")
 
 		# make basic array 
-		self.resampled_data_as_np_array = np.array( np.zeros( len( gathered_desired_data_columns ) *  self.num_of_unique_sensor_ids * self.num_of_sample_time_periods_fit_in_total_sampled_period  ) )
+		self.resampled_data_as_np_array = np.array( np.zeros( len( self.gathered_desired_data_columns ) *  self.num_of_unique_sensor_ids * self.num_of_sample_time_periods_fit_in_total_sampled_period  ) )
 
-		print( "--- got self.num_of_sample_time_periods_fit_in_total_sampled_period = "+str(self.num_of_sample_time_periods_fit_in_total_sampled_period)+" | len( gathered_desired_data_columns ) = "+str( len( gathered_desired_data_columns ) )+" | self.num_of_unique_sensor_ids : "+str( self.num_of_unique_sensor_ids )+" == array length of "+str( self.resampled_data_as_np_array.shape ) )
+		print( "--- got self.num_of_sample_time_periods_fit_in_total_sampled_period = "+str(self.num_of_sample_time_periods_fit_in_total_sampled_period)+" | len( self.gathered_desired_data_columns ) = "+str( len( self.gathered_desired_data_columns ) )+" | self.num_of_unique_sensor_ids : "+str( self.num_of_unique_sensor_ids )+" == array length of "+str( self.resampled_data_as_np_array.shape ) )
 
 		# reshape 
-		self.resampled_data_as_np_array  = self.resampled_data_as_np_array.reshape( [ len( gathered_desired_data_columns ),self.num_of_unique_sensor_ids, self.num_of_sample_time_periods_fit_in_total_sampled_period ] )
+		self.resampled_data_as_np_array  = self.resampled_data_as_np_array.reshape( [ len( self.gathered_desired_data_columns ),self.num_of_unique_sensor_ids, self.num_of_sample_time_periods_fit_in_total_sampled_period ] )
 
 		#
 		print("\t --- and this reshaped looks like this : "+str( self.resampled_data_as_np_array.shape ))
@@ -380,6 +375,7 @@ class gather_resample_metMo_data_make_csv:
 
 
 
+
 	def do_sql_data_data_fetch__convert_to_pd_dataframe( self ):
 		print(">>>> do_sql_data_data_fetch__convert_to_pd_dataframe() ")
 		starttime = time.time() 
@@ -400,28 +396,52 @@ class gather_resample_metMo_data_make_csv:
 		self.print2("--- --- got columns : |"+str( in_data.columns)+"|" )
 		# --- POST READ DATA : set up data - timestamps and all! 
 
-		# aha - timestamp column not a timestamp column?
-		# - let's fix 
-		in_data['forecast_timestamp'] = pd.to_datetime( in_data['forecast_timestamp'] )
-
-		# set the timestamp column as the index 
-		in_data = in_data.set_index( 'forecast_timestamp' )
-
-		# sort data chronologically, by the index 
-		in_data = in_data.sort_index()
-
-		# --- finnisage! 
-		print("|||| and that took "+str( time.time() - starttime)+" ms ")
+		# next step 
+		self.setup_timestamp_columns__set_index__sort_by_index()
 
 
 
-	# for testing wihout net connection! 
+
+	# load data from local TEST file - for testing wihout net connection! 
 	def load_data_from_csv( self ):
 		print(">>>> load_data_from_csv() ")
 		starttime = time.time() 
+		# -----
+
+
+		self.fetched_sql_data_as_a_pd_dataframe = pd.read_csv( self.url__relative_to_this_file__met_no_sensors_data_table_dump )		
+
+		print(" --- at "+str( time.time() - starttime )+" s, got dataframe of shape "+str( self.fetched_sql_data_as_a_pd_dataframe.shape ) )
+
+		print(" --- the column names look like this : |"+str( self.fetched_sql_data_as_a_pd_dataframe.columns )+"|")
 
 		# --- finnisage! 
-		print("|||| and that took "+str( time.time() - starttime)+" ms ")
+		print("|||| and all that took "+str( time.time() - starttime)+" ms ")
+
+		# next step 
+		self.setup_timestamp_columns__set_index__sort_by_index()
+
+
+
+
+	def setup_timestamp_columns__set_index__sort_by_index( self ):
+		print(">>>> setup_timestamp_columns__set_index__sort_by_index() ")
+		starttime = time.time()
+
+		# aha - timestamp column not a timestamp column?
+		# - let's fix 
+		self.fetched_sql_data_as_a_pd_dataframe['forecast_timestamp'] = pd.to_datetime( self.fetched_sql_data_as_a_pd_dataframe['forecast_timestamp'] )
+
+		# set the timestamp column as the index 
+		self.fetched_sql_data_as_a_pd_dataframe = self.fetched_sql_data_as_a_pd_dataframe.set_index( 'forecast_timestamp' )
+
+		# sort data chronologically, by the index 
+		self.fetched_sql_data_as_a_pd_dataframe = self.fetched_sql_data_as_a_pd_dataframe.sort_index()
+
+		# --- finnisage! 
+		print("|||| and all that took "+str( time.time() - starttime)+" ms ")
+
+
 
 
 	# make a column with unique lat/lon names 
@@ -435,11 +455,14 @@ class gather_resample_metMo_data_make_csv:
 		# speed testing … 
 		starttime = time.time() 
 
+		# ----- code 
 
 
 
 		# ----- finnisage! 
-		print("|||| and that took "+str( time.time() - starttime)+" ms ")		
+		print("|||| and all that took "+str( time.time() - starttime)+" ms ")		
+
+
 
 
 	# --- --- columns
