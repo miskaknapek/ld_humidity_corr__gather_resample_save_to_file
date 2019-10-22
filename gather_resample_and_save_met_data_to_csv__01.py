@@ -114,7 +114,7 @@ class gather_resample_metMo_data_make_csv:
 	# EXAMPLE 
 	# EXAMPLE 
 	# EXAMPLE 
-	desired_data_export_metadata = [ { "filename" : "latLonPlusHumidity", "add_timestamp_to_file_TrueFale" : True, "columns" : [ "lat", "lon", "humdidity"] }, { "filename" : "onlyLatLon", "add_timestamp_to_file_TrueFale": True, "columns" : [ "temperature", "winddirection", "windspeed", "pressure"] } ]
+	desired_data_export_metadata = [ { "filename" : "latLonOnly", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale" : True, "columns" : [] }, { "filename" : "latLonPlusHumidity", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale" : True, "columns" : [ "humdidity"] }, { "filename" : "onlyLatLon", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale": False, "columns" : [ "lat", "lon", "temperature", "winddirection", "windspeed", "pressure"] } ]
 	# EXAMPLE 
 	# EXAMPLE 
 	# EXAMPLE 
@@ -133,6 +133,7 @@ class gather_resample_metMo_data_make_csv:
 	# EXAMPLE 
 
 
+
 	# fetched data goes here :) 
 	fetched_sql_data_as_sql_data = -3
 	fetched_sql_data_as_a_pd_dataframe = -4 
@@ -144,6 +145,9 @@ class gather_resample_metMo_data_make_csv:
 	# in between fast storage of resampled data
 	resampled_data_as_np_array = -1 
 
+	# for adding the right start and end times to the resampled data.
+	start_timestamp_dataframe = -1
+	end_timestamp_dataframe = -1
 
 	# ---   DATA URLS 
 
@@ -184,7 +188,7 @@ class gather_resample_metMo_data_make_csv:
 
 
 	def test_method2(self):
-		print(">>>> test_method2 : self.test_var : |"+self.test_var+"|")
+		print("\n>>>> test_method2 : self.test_var : |"+self.test_var+"|")
 		starttime = time.time() 
 
 		# --- --- --- code goes here 
@@ -289,7 +293,7 @@ class gather_resample_metMo_data_make_csv:
 
 	def return_todays_date__at_midnight__as_pd_timestamp( self ):
 
-		print(">>>> return_todays_date_as_pd_timestamp() ");
+		print("\n>>>> return_todays_date_as_pd_timestamp() ");
 
 		midnight_timestamp_from_today = -1;
 
@@ -306,17 +310,24 @@ class gather_resample_metMo_data_make_csv:
 
 	# --- --- data! 
 
+
 	# setup data holding object(s) in regards to num or samples and columns … 
 	def setup_out_data_objects__according_to_sample_length_and_desired_columns( self ):
 		print("\n>>>> setup_out_data_objects__according_to_sample_length_and_desired_columns() ")
 
-		# make basic array 
+		# --- make basic array for data
 		self.resampled_data_as_np_array = np.array( np.zeros( len( self.gathered_desired_data_columns ) *  self.num_of_unique_location_ids * self.num_of_sample_time_periods_fit_in_total_sampled_period  ) )
-
-		print( "--- got self.num_of_sample_time_periods_fit_in_total_sampled_period = "+str(self.num_of_sample_time_periods_fit_in_total_sampled_period)+" | len( self.gathered_desired_data_columns ) = "+str( len( self.gathered_desired_data_columns ) )+" | self.num_of_unique_location_ids : "+str( self.num_of_unique_location_ids )+" == array length of "+str( self.resampled_data_as_np_array.shape ) )
 
 		# reshape 
 		self.resampled_data_as_np_array  = self.resampled_data_as_np_array.reshape( [ len( self.gathered_desired_data_columns ),self.num_of_unique_location_ids, self.num_of_sample_time_periods_fit_in_total_sampled_period ] )
+
+		print( "--- got self.num_of_sample_time_periods_fit_in_total_sampled_period = "+str(self.num_of_sample_time_periods_fit_in_total_sampled_period)+" | len( self.gathered_desired_data_columns ) = "+str( len( self.gathered_desired_data_columns ) )+" | self.num_of_unique_location_ids : "+str( self.num_of_unique_location_ids )+" == array length of "+str( self.resampled_data_as_np_array.shape ) )
+
+		# --- make array for lat lon 
+		self.met_no_points_lat_lons = np.array( np.zeros( self.num_of_unique_location_ids * 2 ))
+		self.met_no_points_lat_lons = self.met_no_points_lat_lons.reshape( [ self.num_of_unique_location_ids, 2 ] )  
+
+		print("--- and he lat met_no_points_lat_lons array shape looks like this : "+str( self.met_no_points_lat_lons.shape ))
 
 		#
 		print("\t --- and this reshaped looks like this : "+str( self.resampled_data_as_np_array.shape ))
@@ -358,8 +369,9 @@ class gather_resample_metMo_data_make_csv:
 
 	# --- --- SQl bits 
 
+
 	def setup_psql_connection( self ):
-		print(">>>> setup_psql_connection() ")
+		print("\n>>>> setup_psql_connection() ")
 
 		self.conn = psycopg2.connect("dbname='"+self.database_name+"' user='postgres' password='secret' host='localhost' ")
 
@@ -369,7 +381,7 @@ class gather_resample_metMo_data_make_csv:
 
 
 	def generate_sql_query_string( self ):
-		print(">>>> generate_sql_query_string() ")
+		print("\n>>>> generate_sql_query_string() ")
 
 		# generate quary string 
 		self.sql_query = "SELECT * FROM "+self.database_name+" WHERE timestamp > '"+str( self.db_search_starttime )+"' AND timestamp < '"+str( self.db_search_endtime )+"' ORDER BY forecast_timestamp DESC"
@@ -379,7 +391,7 @@ class gather_resample_metMo_data_make_csv:
 
 
 	def do_sql_data_data_fetch__convert_to_pd_dataframe( self ):
-		print(">>>> do_sql_data_data_fetch__convert_to_pd_dataframe() ")
+		print("\n>>>> do_sql_data_data_fetch__convert_to_pd_dataframe() ")
 		starttime = time.time() 
 
 		# --- --- code goes here 
@@ -413,7 +425,7 @@ class gather_resample_metMo_data_make_csv:
 
 	# load data from local TEST file - for testing wihout net connection! 
 	def load_data_from_csv__convert_to_pd_dataframe( self ):
-		print(">>>> load_data_from_csv() ")
+		print("\n>>>> load_data_from_csv() ")
 		starttime = time.time() 
 
 		# ----- go 
@@ -428,13 +440,13 @@ class gather_resample_metMo_data_make_csv:
 		print("|||| and all that took "+str( time.time() - starttime)+" ms ")
 
 		# next step 
-		self.setup_timestamp_columns__set_index__sort_by_index()
+		# self.setup_timestamp_columns__set_index__sort_by_index()
 
 
 
 
 	def setup_timestamp_columns__set_index__sort_by_index( self ):
-		print(">>>> setup_timestamp_columns__set_index__sort_by_index() ")
+		print("\n>>>> setup_timestamp_columns__set_index__sort_by_index() ")
 		starttime = time.time()
 
 		# aha - timestamp column not a timestamp column?
@@ -532,7 +544,7 @@ class gather_resample_metMo_data_make_csv:
 
 
 	def speedtest_fetching_unique_rows( self ): 
-		print(">>>> speedtest_fetching_unique_rows() ")	
+		print("\n>>>> speedtest_fetching_unique_rows() ")	
 
 		# prerequisite
 		self.create_unique_concatenated_latlon_string_column()
@@ -551,7 +563,7 @@ class gather_resample_metMo_data_make_csv:
 		print("|||| and all that took "+str( time.time() - starttime)+" ms ")	
 
 
-
+	# USED?
 	def remove_decimals_of_given_num( self, num_as_str ):
 		splitted = num_as_str.split(".")
 		return int( "".join( splitted) ) 
@@ -559,8 +571,28 @@ class gather_resample_metMo_data_make_csv:
 
 
 
+	# make basic pd.dataframes : for start/end times
+	def make_start_and_end_dataframe_rows( self ):
+		print("\n>>>> make_start_and_end_dataframe_rows() ")
+
+		self.start_timestamp_dataframe = -1
+		self.end_timestamp_dataframe = -1
+
+		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
+		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
+		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
+		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
+		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
+		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
+		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
+		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
+
+
+
+
 
 	# --- --- columns
+
 
 	def gather_column_names_from_output_files_metadata( self ):
 		print("\n >>>> gather_column_names_from_output_files_metadata() ")
@@ -575,12 +607,43 @@ class gather_resample_metMo_data_make_csv:
 
 				if column_name not in self.gathered_desired_data_columns: 
 
-					self.gathered_desired_data_columns.append( column_name )
+					if column_name == 'lat' or column_name == 'lon':
+						continue
+
+					else : 
+						self.gathered_desired_data_columns.append( column_name )
 
 		print("--- gathered column names look like this : ")
 		print( self.gathered_desired_data_columns )
 
 
+
+
+	# --- --- RESAMPLE! 
+
+	def resample_data( self ):
+		print("\n>>>> resample_data() ")
+
+		# speed testing … 
+		starttime = time.time() 
+		# --- and some code 
+
+
+		# loop through unique latlon pairs 
+		counter = 0 
+		for latlon_identifier in self.unique_location_ids:
+
+			# gather all 
+			print("\t -- curr latlon_identifier = |"+latlon_identifier+"|")
+			
+			# ---- loop finnisage 
+			counter = counter + 1 
+
+
+		print("-- counter = "+str( counter) )
+
+		# ----- finnisage! 
+		print("|||| and all that took "+str( time.time() - starttime)+" ms ")		
 
 
 
@@ -633,13 +696,32 @@ class gather_resample_metMo_data_make_csv:
 
 		# for testing … load data from disk 
 		self.load_data_from_csv__convert_to_pd_dataframe()
+		self.setup_timestamp_columns__set_index__sort_by_index()
 
 		# get the unique lat/lon pairs… ie find out number of different locations. 
 		# - good thing for setting up appropriately sized data out numpy arrays
-		##### self.setup_timestamp_columns__set_index__sort_by_index()
+		self.create_unique_concatenated_latlon_string_column()
 
 		# setup out arrays (object) accordingly to sample lengths and number of columns 
 		self.setup_out_data_objects__according_to_sample_length_and_desired_columns()
+
+		# setup start/end dataframes, 
+		# 	which will be inserted into the resampled data, to keep it all the same length
+		self.make_start_and_end_dataframe_rows()
+
+		# resample data! 
+		self.resample_data() 
+
+
+
+		# -----  assemble the output files
+		"""
+			***REMEMBER*** the "include_lat_lon_columns" element in the metadata
+				- and include a column with the lat/lon pairs in the
+				file, if needed…
+			
+
+		"""
 
 
 		# ----------------- finnisage! 
@@ -654,7 +736,7 @@ class gather_resample_metMo_data_make_csv:
 
 # ---- ---- --- RUN? 
 
-print(">>>> WELCOME! <<<< ")
+print("\n>>>> WELCOME! <<<< ")
 gather_resample_make_csv = gather_resample_metMo_data_make_csv( 1, 2)
 
 
