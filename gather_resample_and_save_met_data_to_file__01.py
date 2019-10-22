@@ -110,33 +110,36 @@ class gather_resample_metMo_data_make_file:
 
 	# --- ---- data!
 
-	# RELEVANT COLUMN NAMES? 
-	# EXAMPLE 
-	# EXAMPLE 
-	# EXAMPLE 
-	desired_data_export_metadata = [ { "filename" : "latLonOnly", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale" : True, "columns" : [] }, { "filename" : "latLonPlusHumidity", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale" : True, "columns" : [ "humdidity"] }, { "filename" : "onlyLatLon", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale": False, "columns" : [ "lat", "lon", "temperature", "winddirection", "windspeed", "pressure"] } ]
-	# EXAMPLE 
-	# EXAMPLE 
-	# EXAMPLE 
+	# -- Meta data for file export 
+	desired_data_export_metadata = [ { "filename" : "latLonOnly", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale" : True, "columns" : [] }, { "filename" : "latLonPlusHumidity", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale" : True, "columns" : [ "humidity"] }, { "filename" : "onlyLatLon", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale": False, "columns" : [ "lat", "lon", "temperature", "winddirection", "windspeed", "pressure"] } ]
+
+
+
+	# --- column names in sql daa 
+
+	# needed to label data from sql fetch 
+	database_column_names_in_same_order = []
+
+	# - obligatory column headers ( eg when 'opimising' columns, include these, 
+	#		or it'll be difficult to export data )
+	obligatory_data_columns = [ 'lat', 'lon', 'latlon_identifiers']
+
+	# - gathered_column_names_from_file_export_metadata 
+	# 		- these will be the only columns in the df table when resampling 
+	gathered_column_names_from_file_export_metadata = []
 
 
 	# MAKE THIS FROM THE DAtA EXPORT META-DATA?
-	# EXAMPLE 
-	# EXAMPLE 
-	# EXAMPLE 
-	gathered_desired_data_columns = ["GENERATE", "THIS", "DATA", "FROM", "THE", "desired_data_export_metadata", "metadata!"]
-	""" it's like this in the non-object_oriented file : 
-	columns_names =  ['sensor_id', 'sensor_name', 'lat', 'lon', 'timestamp', 'p1', 'p2']    # REALTIME DATA 
-	"""
-	# EXAMPLE 
-	# EXAMPLE 
-	# EXAMPLE 
+	# gathered_desired_data_columns = ["GENERATE", "THIS", "DATA", "FROM", "THE", "desired_data_export_metadata", "metadata!"]
+
 
 
 
 	# fetched data goes here :) 
 	fetched_sql_data_as_sql_data = -3
 	fetched_sql_data_as_a_pd_dataframe = -4 
+	fetched_data__optimised_for_resampling = -5
+
 
 	# from the sql data
 	unique_location_ids = 781
@@ -318,12 +321,12 @@ class gather_resample_metMo_data_make_file:
 		#
 		# --- make basic array for resampled data --- 
 		#
-		self.resampled_data_as_np_array = np.array(  np.zeros( self.num_of_unique_location_ids * len( self.gathered_desired_data_columns ) * self.num_of_sample_time_periods_fit_in_total_sampled_period )  )
+		self.resampled_data_as_np_array = np.array(  np.zeros( self.num_of_unique_location_ids * len( self.gathered_column_names_from_file_export_metadata ) * self.num_of_sample_time_periods_fit_in_total_sampled_period )  )
 
 		# reshape 
-		self.resampled_data_as_np_array  = self.resampled_data_as_np_array.reshape( [ self.num_of_unique_location_ids, len( self.gathered_desired_data_columns ), self.num_of_sample_time_periods_fit_in_total_sampled_period ] )
+		self.resampled_data_as_np_array  = self.resampled_data_as_np_array.reshape( [ self.num_of_unique_location_ids, len( self.gathered_column_names_from_file_export_metadata ), self.num_of_sample_time_periods_fit_in_total_sampled_period ] )
 
-		print( "--- got self.num_of_sample_time_periods_fit_in_total_sampled_period = "+str(self.num_of_sample_time_periods_fit_in_total_sampled_period)+" | len( self.gathered_desired_data_columns ) = "+str( len( self.gathered_desired_data_columns ) )+" | self.num_of_unique_location_ids : "+str( self.num_of_unique_location_ids )+" == array length of "+str( self.resampled_data_as_np_array.shape ) )
+		print( "--- got self.num_of_sample_time_periods_fit_in_total_sampled_period = "+str(self.num_of_sample_time_periods_fit_in_total_sampled_period)+" | len( self.gathered_column_names_from_file_export_metadata ) = "+str( len( self.gathered_column_names_from_file_export_metadata ) )+" | self.num_of_unique_location_ids : "+str( self.num_of_unique_location_ids )+" == array length of "+str( self.resampled_data_as_np_array.shape ) )
 
 		#
 		# --- make array for lat lon 
@@ -413,7 +416,7 @@ class gather_resample_metMo_data_make_file:
 
 		self.print2("-- --- query ready at "+str( time.time() - mini_timing ) ) 
 
-		self.fetched_sql_data_as_a_pd_dataframe = pd.DataFrame( self.cur.fetchall(), columns=self.gathered_desired_data_columns )
+		self.fetched_sql_data_as_a_pd_dataframe = pd.DataFrame( self.cur.fetchall(), columns=self.database_column_names_in_same_order )
 
 		self.print2("\n --- --- got table of shape "+str( in_data.shape )+" "+str( time.time() - mini_timing ) )    
 		self.print2("--- --- got columns : |"+str( in_data.columns)+"|" )
@@ -567,12 +570,6 @@ class gather_resample_metMo_data_make_file:
 		print("|||| and all that took "+str( time.time() - starttime)+" ms ")	
 
 
-	# USED?
-	def remove_decimals_of_given_num( self, num_as_str ):
-		splitted = num_as_str.split(".")
-		return int( "".join( splitted) ) 
-
-
 
 
 	# make basic pd.dataframes : for start/end times
@@ -584,7 +581,7 @@ class gather_resample_metMo_data_make_file:
 
 		# - generate data data columns 
 		columns_with_blank_data_for_startEndTime_df = {}
-		for column_name in self.gathered_desired_data_columns:
+		for column_name in self.gathered_column_names_from_file_export_metadata:
 			columns_with_blank_data_for_startEndTime_df[ column_name ] = np.NaN
 
 		print("--- got data col that looks like this : ")
@@ -597,8 +594,8 @@ class gather_resample_metMo_data_make_file:
 		self.end_timestamp_dataframe = pd.DataFrame( data = columns_with_blank_data_for_startEndTime_df, index = pd.DatetimeIndex( [pd.Timestamp.now()] ))
 		"""
 
-		self.start_timestamp_dataframe = pd.DataFrame( data = columns_with_blank_data_for_startEndTime_df, index = pd.DatetimeIndex( [pd.db_search_starttime ] ))
-		self.end_timestamp_dataframe = pd.DataFrame( data = columns_with_blank_data_for_startEndTime_df, index = pd.DatetimeIndex( [pd.db_search_endtime ] ))		
+		self.start_timestamp_dataframe = pd.DataFrame( data = columns_with_blank_data_for_startEndTime_df, index = pd.DatetimeIndex( [ self.db_search_starttime ] ))
+		self.end_timestamp_dataframe = pd.DataFrame( data = columns_with_blank_data_for_startEndTime_df, index = pd.DatetimeIndex( [ self.db_search_endtime ] ))		
 
 		print("--- self.start_timestamp_dataframe : ")
 		print( self.start_timestamp_dataframe )
@@ -624,26 +621,54 @@ class gather_resample_metMo_data_make_file:
 		# print("\n --- input looks like this : ")
 		# print( self.desired_data_export_metadata )
 
-		self.gathered_desired_data_columns = []
+		self.gathered_column_names_from_file_export_metadata = []
 
 		for meta_data_item in self.desired_data_export_metadata:
 
 			for column_name in meta_data_item['columns']:
 
-				if column_name not in self.gathered_desired_data_columns: 
+				if column_name not in self.gathered_column_names_from_file_export_metadata: 
 
 					if column_name == 'lat' or column_name == 'lon':
 						continue
 
 					else : 
-						self.gathered_desired_data_columns.append( column_name )
+						self.gathered_column_names_from_file_export_metadata.append( column_name )
 
 		# sort things alphabetically 
-		self.gathered_desired_data_columns.sort()
+
+		# add things like lat, lon and curr_latlon_identifier
+		# self.gathered_column_names_from_file_export_metadata = self.obligatory_data_columns + self.gathered_column_names_from_file_export_metadata
+		self.gathered_column_names_from_file_export_metadata.sort()
 
 		# --- finnisage 
 		print("--- gathered column names look like this : ")
-		print( self.gathered_desired_data_columns )
+		print( self.gathered_column_names_from_file_export_metadata )
+
+
+
+
+	# --- --- prepare df for resampling 
+	#			- ie only include needed columns :) 
+
+	def prepare_df_for_resampling__include_only_used_columns( self ):
+		print("\n >>>> prepare_df_for_resampling__include_only_used_columns() ")
+
+		# speed testing … 
+		starttime = time.time() 
+		# --- and some code 
+
+		column_names__obligatory_and_in_file_metadata = self.obligatory_data_columns + self.gathered_column_names_from_file_export_metadata 
+
+		print("--- column_names__obligatory_and_in_file_metadata : |"+str( column_names__obligatory_and_in_file_metadata )+"|" )
+
+		self.fetched_data__optimised_for_resampling = self.fetched_sql_data_as_a_pd_dataframe[ column_names__obligatory_and_in_file_metadata ]
+
+		# --- discard old data frame? 
+
+		# ----- finnisage! 
+		print("|||| and all that took "+str( time.time() - starttime)+" ms ")	
+
 
 
 
@@ -659,26 +684,51 @@ class gather_resample_metMo_data_make_file:
 
 
 		# loop through unique latlon pairs 
-		counter = 0 
-		for latlon_identifier in self.unique_location_ids:
+		latlon_unique_combo_couner_i = 0 
+		for curr_latlon_identifier in self.unique_location_ids:
 
 			# gather all 
-			print("\t -- curr latlon_identifier = |"+latlon_identifier+"|")
-			
+			# print("\t -- curr latlon_identifier = |"+latlon_identifier+"|")
+
+			# -- -- run : 
+
+			# fetch only rows of the current latLon combo  
+			all_data_rows_related_to_curr_latlon_identifier = self.fetched_data__optimised_for_resampling[ self.fetched_data__optimised_for_resampling['latlon_identifiers'] == curr_latlon_identifier ]
+
+
+			# -- save current lat lon pair 
+
+
+			# -- reduce df to only needed columns 
+
+
+			# -- add startdate row 
+
+			# -- add end time row 
+
+
+			# -- resample 
+
+
+			# -- -- loop and save the different columns to the out np array 
+
+
 			# ---- loop finnisage 
-			counter = counter + 1 
+			latlon_unique_combo_couner_i = latlon_unique_combo_couner_i + 1 
 
 
-		print("-- counter = "+str( counter) )
 
-		# ----- finnisage! 
+		# --- end of looping --- 
+		print("-- latlon_unique_combo_couner_i = "+str( latlon_unique_combo_couner_i) )
+
+		# ----- --- finnisage! ------ 
 		print("|||| and all that took "+str( time.time() - starttime)+" ms ")		
 
 
 
-	# ============================  RUN …for fun ============================
-	# ============================  RUN …for fun ============================
-	# ============================  RUN …for fun ============================
+	# ============================  RUN …for fun  ============================
+	# ============================  RUN …for fun  ============================
+	# ============================  RUN …for fun  ============================
 
 
 
@@ -734,6 +784,9 @@ class gather_resample_metMo_data_make_file:
 
 		# setup out arrays (object) accordingly to sample lengths and number of columns 
 		self.setup_out_data_objects__according_to_sample_length_and_desired_columns()
+
+		# remove unnneded columns :) 
+		self.prepare_df_for_resampling__include_only_used_columns()
 
 		# setup start/end dataframes, 
 		# 	which will be inserted into the resampled data, to keep it all the same length
