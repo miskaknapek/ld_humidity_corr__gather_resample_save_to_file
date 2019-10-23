@@ -133,8 +133,6 @@ class gather_resample_metMo_data_make_file:
 	# gathered_desired_data_columns = ["GENERATE", "THIS", "DATA", "FROM", "THE", "desired_data_export_metadata", "metadata!"]
 
 
-
-
 	# fetched data goes here :) 
 	fetched_sql_data_as_sql_data = -3
 	fetched_sql_data_as_a_pd_dataframe = -4 
@@ -425,7 +423,7 @@ class gather_resample_metMo_data_make_file:
 		print("|||| and all that took "+str( time.time() - starttime)+" ms ")
 
 		# ------- next step 
-		self.setup_timestamp_columns__set_index__sort_by_index()
+		# self.setup_timestamp_columns__set_index__sort_by_index()
 
 
 
@@ -445,9 +443,6 @@ class gather_resample_metMo_data_make_file:
 
 		# --- finnisage! 
 		print("|||| and all that took "+str( time.time() - starttime)+" ms ")
-
-		# next step 
-		# self.setup_timestamp_columns__set_index__sort_by_index()
 
 
 
@@ -472,8 +467,30 @@ class gather_resample_metMo_data_make_file:
 
 
 
+	def FOR_TESTING__select_data_directly_from_DF_rather_than_through_sql_query( self ):
+		print("\n >>>> FOR_TESTING__select_data_directly_from_DF_rather_than_through_sql_query() ")
+		starttime = time.time()
+
+		print("-- the self.fetched_sql_data_as_a_pd_dataframe has shape |"+str( self.fetched_sql_data_as_a_pd_dataframe.shape )+"|")
+
+		# select by starttime 
+		self.fetched_sql_data_as_a_pd_dataframe = self.fetched_sql_data_as_a_pd_dataframe[ self.fetched_sql_data_as_a_pd_dataframe.index >= self.db_search_starttime ]
+
+		print(" --- --- first cut in data at "+str( time.time() - starttime )+" - shape looks like : |"+str( self.fetched_sql_data_as_a_pd_dataframe.shape )+"|" )
+
+		# select by endtime 
+		self.fetched_sql_data_as_a_pd_dataframe = self.fetched_sql_data_as_a_pd_dataframe[ self.fetched_sql_data_as_a_pd_dataframe.index <= self.db_search_endtime ]
+		
+		print(" --- --- second cut in data at "+str( time.time() - starttime )+" - shape looks like : |"+str( self.fetched_sql_data_as_a_pd_dataframe.shape )+"|"  )
+
+		print("--- -- and the self.fetched_sql_data_as_a_pd_dataframe NOW HAS a shape of |"+str( self.fetched_sql_data_as_a_pd_dataframe.shape )+"|" )
+		print(" |||| and all that took "+str( time.time() - starttime )+" s " )
+
+
+
+
 	def get_statistics_on_lat_lon_lengths( self ):
-		print("--- get_statistics_on_lat_lon_lengths ")
+		print("\n >>>> get_statistics_on_lat_lon_lengths ")
 
 		starttime = time.time()
 
@@ -587,28 +604,12 @@ class gather_resample_metMo_data_make_file:
 		print("--- got data col that looks like this : ")
 		print( columns_with_blank_data_for_startEndTime_df )
 
-		# test insert 
-
-		"""
-		self.start_timestamp_dataframe = pd.DataFrame( data = columns_with_blank_data_for_startEndTime_df, index = pd.DatetimeIndex( [pd.Timestamp.now()] ))
-		self.end_timestamp_dataframe = pd.DataFrame( data = columns_with_blank_data_for_startEndTime_df, index = pd.DatetimeIndex( [pd.Timestamp.now()] ))
-		"""
-
+		# make actual start/end dataframes
 		self.start_timestamp_dataframe = pd.DataFrame( data = columns_with_blank_data_for_startEndTime_df, index = pd.DatetimeIndex( [ self.db_search_starttime ] ))
 		self.end_timestamp_dataframe = pd.DataFrame( data = columns_with_blank_data_for_startEndTime_df, index = pd.DatetimeIndex( [ self.db_search_endtime ] ))		
 
 		print("--- self.start_timestamp_dataframe : ")
 		print( self.start_timestamp_dataframe )
-
-		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
-		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
-		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
-		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
-		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
-		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
-		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
-		print("|||| PLEASE MAKE START/END DATAFRAME TIMESTAMPS ")
-
 
 
 
@@ -695,14 +696,29 @@ class gather_resample_metMo_data_make_file:
 			# fetch only rows of the current latLon combo  
 			all_data_rows_related_to_curr_latlon_identifier = self.fetched_data__optimised_for_resampling[ self.fetched_data__optimised_for_resampling['latlon_identifiers'] == curr_latlon_identifier ]
 
-
 			# -- save current lat lon pair 
-
+			curr_lat = all_data_rows_related_to_curr_latlon_identifier.iloc[0]['lat']
+			curr_lon = all_data_rows_related_to_curr_latlon_identifier.iloc[0]['lon']
+			self.met_no_points_lat_lons[ latlon_unique_combo_couner_i ] = np.array( [ curr_lat, curr_lon ] )
 
 			# -- reduce df to only needed columns 
+			all_data_rows_related_to_curr_latlon_identifier = all_data_rows_related_to_curr_latlon_identifier[ self.gathered_column_names_from_file_export_metadata ]
 
+			# -- add STARTdate row 
+			all_data_rows_related_to_curr_latlon_identifier = self.start_timestamp_dataframe.append( all_data_rows_related_to_curr_latlon_identifier )
 
-			# -- add startdate row 
+			# -- add ENDdate row 
+			all_data_rows_related_to_curr_latlon_identifier = all_data_rows_related_to_curr_latlon_identifier.append( self.end_timestamp_dataframe )
+
+			# feedback at end and beginning 
+			if latlon_unique_combo_couner_i == 0 or latlon_unique_combo_couner_i == ( self.unique_location_ids.shape[0] -1 )  : 
+				print("\n --- --- --- all_data_rows_related_to_curr_latlon_identifier columns now include : |"+str( all_data_rows_related_to_curr_latlon_identifier.columns)+"|" )
+				print("--- --- --- --- blank start time df looks like this : |"+str( self.start_timestamp_dataframe )+"|")
+				print("--- --- --- --- blank end time df looks like this : |"+str( self.end_timestamp_dataframe )+"|")
+				print("--- --- the first/last few rows of all_data_rows_related_to_curr_latlon_identifier look like this : ")
+				print( all_data_rows_related_to_curr_latlon_identifier[:5] )
+				print( all_data_rows_related_to_curr_latlon_identifier[-5:] )
+
 
 			# -- add end time row 
 
@@ -714,6 +730,8 @@ class gather_resample_metMo_data_make_file:
 
 
 			# ---- loop finnisage 
+
+			# increment the counter! 
 			latlon_unique_combo_couner_i = latlon_unique_combo_couner_i + 1 
 
 
@@ -726,9 +744,9 @@ class gather_resample_metMo_data_make_file:
 
 
 
-	# ============================  RUN …for fun  ============================
-	# ============================  RUN …for fun  ============================
-	# ============================  RUN …for fun  ============================
+	# ============================  RUN …for fun n ============================
+	# ============================  RUN …for fun n ============================
+	# ============================  RUN …for fun n ============================
 
 
 
@@ -777,6 +795,7 @@ class gather_resample_metMo_data_make_file:
 		# for testing … load data from disk 
 		self.load_data_from_csv__convert_to_pd_dataframe()
 		self.setup_timestamp_columns__set_index__sort_by_index()
+		self.FOR_TESTING__select_data_directly_from_DF_rather_than_through_sql_query()
 
 		# get the unique lat/lon pairs… ie find out number of different locations. 
 		# - good thing for setting up appropriately sized data out numpy arrays
