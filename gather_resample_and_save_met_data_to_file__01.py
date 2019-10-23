@@ -70,7 +70,7 @@ class gather_resample_metMo_data_make_file:
 	# final kind of period we're doing 
 	kind_of_time_period_we_are_doing = -1 
 
-	# --- --- timing 
+	# --- --- TIMING 
 
 	db_search_starttime = -1 
 	db_search_endtime = -2
@@ -83,7 +83,7 @@ class gather_resample_metMo_data_make_file:
 	start_date__if_doing_24_hours_data = 0
 
 	# sample time length
-	time_length_of_sample_period__in_seconds = 60*8
+	time_length_of_sample_period__in_seconds = 60*60
 	# in pandas compatible time description format… 
 	time_length_of_sample_period__in_seconds__as_pandas_resampleing_time = str(time_length_of_sample_period__in_seconds)+"S"
 	print2("\n--- time_length_of_sample_period__in_seconds__as_pandas_resampleing_time : "+time_length_of_sample_period__in_seconds__as_pandas_resampleing_time )
@@ -93,7 +93,7 @@ class gather_resample_metMo_data_make_file:
 
 
 
-	# --- --- sql vars 
+	# --- --- SQL VARS 
 
 	sql_query = 0
 
@@ -108,14 +108,14 @@ class gather_resample_metMo_data_make_file:
 	cur = -1
 
 
-	# --- ---- data!
+	# --- ---- DATA!
 
 	# -- Meta data for file export 
 	desired_data_export_metadata = [ { "filename" : "latLonOnly", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale" : True, "columns" : [] }, { "filename" : "latLonPlusHumidity", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale" : True, "columns" : [ "humidity"] }, { "filename" : "onlyLatLon", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale": False, "columns" : [ "lat", "lon", "temperature", "winddirection", "windspeed", "pressure"] } ]
 
 
 
-	# --- column names in sql daa 
+	# --- column names in sql data 
 
 	# needed to label data from sql fetch 
 	database_column_names_in_same_order = []
@@ -129,26 +129,31 @@ class gather_resample_metMo_data_make_file:
 	gathered_column_names_from_file_export_metadata = []
 
 
-	# MAKE THIS FROM THE DAtA EXPORT META-DATA?
-	# gathered_desired_data_columns = ["GENERATE", "THIS", "DATA", "FROM", "THE", "desired_data_export_metadata", "metadata!"]
-
-
-	# fetched data goes here :) 
+	# -- **IN DATA** : fetched data goes here :) 
 	fetched_sql_data_as_sql_data = -3
 	fetched_sql_data_as_a_pd_dataframe = -4 
 	fetched_data__optimised_for_resampling = -5
 
+	# --- **(OUT) DATA** : in between fast storage of resampled data
+	resampled_data_as_np_array = -6 
 
-	# from the sql data
+	#-- and also the [lat,lon] coords
+	met_no_points_lat_lons = -7
+
+
+	# -- unique location ids 
+	# all the ids : 
 	unique_location_ids = 781
+	# looked up 
 	num_of_unique_location_ids = 781
 
-	# in between fast storage of resampled data
-	resampled_data_as_np_array = -1 
-
+	# "blank" start/end dataframes : 
 	# for adding the right start and end times to the resampled data.
 	start_timestamp_dataframe = -1
 	end_timestamp_dataframe = -1
+
+
+
 
 	# ---   DATA URLS 
 
@@ -178,6 +183,8 @@ class gather_resample_metMo_data_make_file:
 	# ============================  METHODS ============================
 	# ============================  METHODS ============================
 	# ============================  METHODS ============================
+
+
 
 	# --------------  *test*  methods :)  *test* 
 
@@ -389,7 +396,7 @@ class gather_resample_metMo_data_make_file:
 		print("\n>>>> generate_sql_query_string() ")
 
 		# generate quary string 
-		self.sql_query = "SELECT * FROM "+self.database_name+" WHERE timestamp > '"+str( self.db_search_starttime )+"' AND timestamp < '"+str( self.db_search_endtime )+"' ORDER BY forecast_timestamp DESC"
+		self.sql_query = "SELECT * FROM "+self.database_name+" WHERE timestamp > '"+str( self.db_search_starttime )+"' AND timestamp <= '"+str( self.db_search_endtime )+"' ORDER BY forecast_timestamp DESC"
 		self.print2( "-- -- generated psql query : |"+self.sql_query+"|" )
 
 
@@ -683,6 +690,9 @@ class gather_resample_metMo_data_make_file:
 		starttime = time.time() 
 		# --- and some code 
 
+		# look this up, so we don't need to check it every time… 
+		gathered_column_names_from_file_export_metadata__length = len( self.gathered_column_names_from_file_export_metadata )
+
 
 		# loop through unique latlon pairs 
 		latlon_unique_combo_couner_i = 0 
@@ -720,13 +730,33 @@ class gather_resample_metMo_data_make_file:
 				print( all_data_rows_related_to_curr_latlon_identifier[-5:] )
 
 
-			# -- add end time row 
-
-
 			# -- resample 
+			relev_time_period_resamped = all_data_rows_related_to_curr_latlon_identifier.resample( self.time_length_of_sample_period__in_seconds__as_pandas_resampleing_time ).mean().fillna( method='ffill' )
+
+			# feedback at after resampling 
+			if latlon_unique_combo_couner_i == 0 or latlon_unique_combo_couner_i == ( self.unique_location_ids.shape[0] -1 )  : 
+				print("--- ( number of expected samples… : "+str(self.num_of_sample_time_periods_fit_in_total_sampled_period)+" )" )
+				print("--- data after resampling : ( shape : "+str( relev_time_period_resamped.shape  )+" ) :")
+				print( relev_time_period_resamped[:5] )
+				print( relev_time_period_resamped[-5:] )
+
+				print(" REMEMBER :  to CHECK TIMING OF RESAMPLES")
+				print(" REMEMBER :  to CHECK TIMING OF RESAMPLES")
+				print(" REMEMBER :  to CHECK TIMING OF RESAMPLES")
+				print(" REMEMBER :  to CHECK TIMING OF RESAMPLES")
+				print(" REMEMBER :  to CHECK TIMING OF RESAMPLES")
 
 
 			# -- -- loop and save the different columns to the out np array 
+
+			for column_index in range( gathered_column_names_from_file_export_metadata__length ):
+
+				if latlon_unique_combo_couner_i == 0 or latlon_unique_combo_couner_i == ( self.unique_location_ids.shape[0] -1 ): 
+					print("--- --- working on column # "+str( column_index)+" - ie |"+self.gathered_column_names_from_file_export_metadata[ column_index ]+"|" )
+					print("--- --- --- with shape "+str( relev_time_period_resamped[ self.gathered_column_names_from_file_export_metadata[ column_index ] ].shape ) )
+
+				# let's see if we can insert thigns in the right place 
+				self.resampled_data_as_np_array[ latlon_unique_combo_couner_i ][ column_index ][ 0:self.num_of_sample_time_periods_fit_in_total_sampled_period ] = relev_time_period_resamped[ self.gathered_column_names_from_file_export_metadata[ column_index ] ]
 
 
 			# ---- loop finnisage 
