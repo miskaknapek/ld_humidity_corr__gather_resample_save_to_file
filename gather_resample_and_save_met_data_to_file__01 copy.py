@@ -46,7 +46,7 @@ class gather_resample_metMo_data_make_file:
 
 	# --- --- FLAGS! 
 
-	do_data_fetch = True
+	do_sql_data_fetch = True
 
 	do_resampling_loop = True 
 
@@ -111,18 +111,14 @@ class gather_resample_metMo_data_make_file:
 	# --- ---- DATA!
 
 	# -- Meta data for file export 
-	# desired_data_export_metadata = [ { "filename" : "latLonOnly", "include_lat_lon_columns" : True, "add_timing_data" : True, "columns" : [] }, { "filename" : "latLonPlusHumidity", "include_lat_lon_columns" : True, "add_timing_data" : True, "columns" : [ "humidity"] }, { "filename" : "onlyLatLon", "include_lat_lon_columns" : True, "add_timing_data": False, "columns" : [ "lat", "lon", "temperature", "winddirection", "windspeed", "pressure"] } ]
+	desired_data_export_metadata = [ { "filename" : "latLonOnly", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale" : True, "columns" : [] }, { "filename" : "latLonPlusHumidity", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale" : True, "columns" : [ "humidity"] }, { "filename" : "onlyLatLon", "include_lat_lon_columns" : True, "add_timestamp_to_file_TrueFale": False, "columns" : [ "lat", "lon", "temperature", "winddirection", "windspeed", "pressure"] } ]
 
-	# -- TESTING : Meta data for file export  : 
-	# 	- do all variables in one file : for TESTING mostly : 
-	#		- including the lat lon, that should not be there, but should be filtered away later :)
-	desired_data_export_metadata = [ { "filename" : "all_columns", "include_lat_lon_columns" : True, "add_timing_data" : True, "columns" : [  "lat", "lon", "altitude", "temperature", "winddirection", "windspeed", "pressure", "humidity" ] } ]
 
 
 	# --- column names in sql data 
 
 	# needed to label data from sql fetch 
-	database_column_names_in_same_order = [ "forecast_timestamp", "fetched_at_timestamp", "daily_fetching_session_id",  "lat", "lon", "altitude", "temperature", "winddirection", "windspeed", "pressure", "humidity" ]
+	database_column_names_in_same_order = []
 
 	# - obligatory column headers ( eg when 'opimising' columns, include these, 
 	#		or it'll be difficult to export data )
@@ -774,120 +770,7 @@ class gather_resample_metMo_data_make_file:
 		print("-- latlon_unique_combo_couner_i = "+str( latlon_unique_combo_couner_i) )
 
 		# ----- --- finnisage! ------ 
-		print("|||| and all that took "+str( time.time() - starttime)+" ms ")	
-
-
-
-	# --- --- SAVE DATA! 
-
-	def save_data__locally( self ):
-		print("\n >>>> save_data__locally() ")
-
-		# speedtest! 
-		starttime = time.time()
-		# ----------------- runme … 
-
-		### FOR TESTING 
-		self.file_saving_items__SAVED_FOR_TESTING = []
-
-		# main status 
-		print("--- got file export metadaa of length | "+str( len( self.desired_data_export_metadata ) )+" |" )
-
-		file_export_metadata_item_index = 0 
-		# loop through metadata items! 
-		for file_export_metadata_item in self.desired_data_export_metadata:
-			# status
-			print("\n\t --- working on file export metadata item #"+str( file_export_metadata_item_index)+" - which looks like this : ")
-			print( file_export_metadata_item )
-
-			# --- --- do export!
-
-			# -- make item! 
-			curr_export_item = {}
-
-			# -- include lat/lon? 
-			if file_export_metadata_item['include_lat_lon_columns'] == True:
-				print("--- --- including LatLon!")
-				#
-				curr_export_item['latLon'] = self.met_no_points_lat_lons.tolist()
-
-
-			# -- include timing data?  
-			if file_export_metadata_item['add_timing_data'] == True:
-				print("--- --- saving timing metadata! ")
-				curr_export_item['start_timestamp'] = str( self.db_search_starttime )
-				curr_export_item['sample_period_length'] = self.time_length_of_sample_period__in_seconds
-
-
-			# -- -- SAVE relevant DATA COLUMNS in curr export item!
-			"""
-			note : 
-				- we're looping through the gathered list of coords to 
-				make sure we're not including some nonsense columns mentioned in the 
-				file metadata, like lat/lon etc…
-				these columns are normally filtered out when gathering columns
-				but, well… we need to do it again… 
-			"""
-			for gathered_column_index in range( len( self.gathered_column_names_from_file_export_metadata ) ):
-				# get curr column name 
-				curr_column_name = self.gathered_column_names_from_file_export_metadata[gathered_column_index]
-
-				# status
-				print("\t --- working on gathered column index #"+str( gathered_column_index )+"/"+str(  len( self.gathered_column_names_from_file_export_metadata ) )+" - item |"+curr_column_name+"|" )
-
-				# check if the current column is amongst this file-metadata export columns
-				if curr_column_name in file_export_metadata_item['columns']:
-
-					# status 
-					print("\t\t --- YES! curr column is in curr file export metadata :( ")
-
-					# - make item category 
-					curr_export_item[ curr_column_name ] = []
-
-					# - loop through the numpy array with all the data
-					# 	and append all the different sensors 
-					location_index = 0
-					for location_in_compiled_numpy_array_of_data in self.resampled_data_as_np_array:
-						# append the given locations' column for the 
-						# data we're looking for
-						curr_export_item[ curr_column_name ].append( location_in_compiled_numpy_array_of_data[ gathered_column_index  ].tolist() )
-
-						# status
-						print("\t\t\t -- location #"+str( location_index )+" |"+str( self.met_no_points_lat_lons[location_index] )+"|  (ideally…) appending |"+curr_column_name+"| data, which looks like this : ")
-						print( "\t\t\t - "+str( location_in_compiled_numpy_array_of_data[ gathered_column_index  ] ) )
-
-						# --- sub-sub finnisage 
-						location_index = location_index + 1 
-
-
-				# --- --- --- don't export this column?
-				else:
-					print("\t\t --- curr column NOT in curr file export metadata :( ")
-
-
-			# --- --- DATA > JSON > SAVE.txt --- 
-
-
-			# --- convert to json 
-
-
-			# --- save as txt 
-
-
-
-			# --- FOR TESTING … save the file export data, so we can check it later
-			self.file_saving_items__SAVED_FOR_TESTING.append( curr_export_item )
-
-			# - timing report 
-			print("|||| currently at time "+str( time.time() - starttime)+" ms from start ")
-
-			# --- --- sub-finnisage 
-			file_export_metadata_item_index = file_export_metadata_item_index +1 
-
-		# ----------------- finnisage! 
-		print("|||| runme took "+str( time.time() - starttime)+" ms ")		
-		# le fin! 
-
+		print("|||| and all that took "+str( time.time() - starttime)+" ms ")		
 
 
 
@@ -940,32 +823,27 @@ class gather_resample_metMo_data_make_file:
 		self.find_num_of_sample_periods_that_will_fit_in_start_to_end_time_period()
 
 		# for testing … load data from disk 
-		if self.do_data_fetch: 
-			self.load_data_from_csv__convert_to_pd_dataframe()
-			self.setup_timestamp_columns__set_index__sort_by_index()
-			self.FOR_TESTING__select_data_directly_from_DF_rather_than_through_sql_query()
+		self.load_data_from_csv__convert_to_pd_dataframe()
+		self.setup_timestamp_columns__set_index__sort_by_index()
+		self.FOR_TESTING__select_data_directly_from_DF_rather_than_through_sql_query()
 
-			# get the unique lat/lon pairs… ie find out number of different locations. 
-			# - good thing for setting up appropriately sized data out numpy arrays
-			self.create_unique_concatenated_latlon_string_column()
+		# get the unique lat/lon pairs… ie find out number of different locations. 
+		# - good thing for setting up appropriately sized data out numpy arrays
+		self.create_unique_concatenated_latlon_string_column()
 
-			# setup out arrays (object) accordingly to sample lengths and number of columns 
-			self.setup_out_data_objects__according_to_sample_length_and_desired_columns()
+		# setup out arrays (object) accordingly to sample lengths and number of columns 
+		self.setup_out_data_objects__according_to_sample_length_and_desired_columns()
 
-			# remove unnneded columns :) 
-			self.prepare_df_for_resampling__include_only_used_columns()
+		# remove unnneded columns :) 
+		self.prepare_df_for_resampling__include_only_used_columns()
 
-			# setup start/end dataframes, 
-			# 	which will be inserted into the resampled data, to keep it all the same length
-			self.make_start_and_end_dataframe_rows__with_desired_columns()
+		# setup start/end dataframes, 
+		# 	which will be inserted into the resampled data, to keep it all the same length
+		self.make_start_and_end_dataframe_rows__with_desired_columns()
 
 		# resample data! 
-		if self.do_resampling_loop: 
-			self.resample_data() 
+		self.resample_data() 
 
-		# save data?! 
-		if self.saving_data:
-			self.save_data__locally()
 
 
 		# -----  assemble the output files
