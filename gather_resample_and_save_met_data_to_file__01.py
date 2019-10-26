@@ -70,6 +70,8 @@ class gather_resample_metMo_data_make_file:
 	# final kind of period we're doing 
 	kind_of_time_period_we_are_doing = -1 
 
+
+
 	# --- --- TIMING 
 
 	db_search_starttime = -1 
@@ -83,7 +85,8 @@ class gather_resample_metMo_data_make_file:
 	start_date__if_doing_24_hours_data = 0
 
 	# sample time length
-	time_length_of_sample_period__in_seconds = 60*60
+	#  - MAKE SURE THIS IS IN SECONDS! ( otherwise it's bad news for the code … )
+	time_length_of_sample_period__in_seconds = 60*10
 	# in pandas compatible time description format… 
 	time_length_of_sample_period__in_seconds__as_pandas_resampleing_time = str(time_length_of_sample_period__in_seconds)+"S"
 	print2("\n--- time_length_of_sample_period__in_seconds__as_pandas_resampleing_time : "+time_length_of_sample_period__in_seconds__as_pandas_resampleing_time )
@@ -163,8 +166,13 @@ class gather_resample_metMo_data_make_file:
 
 	basic_file_path_to_final_file = "/mnt/virtio-bbc6cf3a-042b-4410-9/luftdaten/luftdaten_daten/tabular_data/tabular_ld_data_TEST_AREA/"
 
+	# TEST DATA URL 
+	basic_file_path_to_final_file = "test_out_data/"
+
 	# DATA URL - sensors database table dump as csv 
 	url__relative_to_this_file__met_no_sensors_data_table_dump = "sample_met_no_data/met_no_formatted_data__test_out_20191020_01.csv"
+
+
 	
 
 	# REMOTE DIRECTORY FOR FILES 
@@ -206,7 +214,7 @@ class gather_resample_metMo_data_make_file:
 		# --- --- --- code goes here 
 
 		# ---------- finnnisage 
-		print("|||| and all that took "+str( time.time() - starttime)+" ms ")
+		print("|||| and all that took "+str( time.time() - starttime)+" s ")
 
 
 	# -------------- **real**  methods :)  **real**
@@ -431,7 +439,7 @@ class gather_resample_metMo_data_make_file:
 		self.print2("--- --- got columns : |"+str( in_data.columns)+"|" )
 
 		# --- finnisage! 
-		print("|||| and all that took "+str( time.time() - starttime)+" ms ")
+		print("|||| and all that took "+str( time.time() - starttime)+" s ")
 
 		# ------- next step 
 		# self.setup_timestamp_columns__set_index__sort_by_index()
@@ -453,7 +461,7 @@ class gather_resample_metMo_data_make_file:
 		print(" --- the column names look like this : |"+str( self.fetched_sql_data_as_a_pd_dataframe.columns )+"|")
 
 		# --- finnisage! 
-		print("|||| and all that took "+str( time.time() - starttime)+" ms ")
+		print("|||| and all that took "+str( time.time() - starttime)+" s ")
 
 
 
@@ -473,7 +481,7 @@ class gather_resample_metMo_data_make_file:
 		self.fetched_sql_data_as_a_pd_dataframe = self.fetched_sql_data_as_a_pd_dataframe.sort_index()
 
 		# --- finnisage! 
-		print("|||| and all that took "+str( time.time() - starttime)+" ms ")
+		print("|||| and all that took "+str( time.time() - starttime)+" s ")
 
 
 
@@ -538,7 +546,7 @@ class gather_resample_metMo_data_make_file:
 		latlon_list = 0
 		latlon_len_list = 0
 
-		print("|||| and all that took "+str( time.time() - starttime)+" ms ")
+		print("|||| and all that took "+str( time.time() - starttime)+" s ")
 
 
 
@@ -573,7 +581,7 @@ class gather_resample_metMo_data_make_file:
 		self.num_of_unique_location_ids =  self.unique_location_ids.shape[0]
 
 		# ----- finnisage! 
-		print("|||| and all that took "+str( time.time() - starttime)+" ms ")	
+		print("|||| and all that took "+str( time.time() - starttime)+" s ")	
 
 
 
@@ -595,7 +603,7 @@ class gather_resample_metMo_data_make_file:
 			self.TESTS_row_length_count.append(  self.fetched_sql_data_as_a_pd_dataframe[ self.fetched_sql_data_as_a_pd_dataframe['latlon_identifiers'] == curr_latlon_identifier ]   )
 
 		# ----- finnisage! 
-		print("|||| and all that took "+str( time.time() - starttime)+" ms ")	
+		print("|||| and all that took "+str( time.time() - starttime)+" s ")	
 
 
 
@@ -679,8 +687,32 @@ class gather_resample_metMo_data_make_file:
 		# --- discard old data frame? 
 
 		# ----- finnisage! 
-		print("|||| and all that took "+str( time.time() - starttime)+" ms ")	
+		print("|||| and all that took "+str( time.time() - starttime)+" s ")	
 
+
+
+
+	# --- --- prepare for export : reduce values in columns
+	#
+
+	def prepare_for_export__reduce_values_where_relevant( self ):
+		print(">>>> prepare_for_export__reduce_values_where_relevant() ")
+		starttime = time.time()
+
+		# --- reduce values in relevant columns 
+
+		self.fetched_data__optimised_for_resampling['humidity'] =  self.fetched_data__optimised_for_resampling['humidity'].astype(int)
+
+		self.fetched_data__optimised_for_resampling['pressure'] =  self.fetched_data__optimised_for_resampling['pressure'].astype(int)
+
+		self.fetched_data__optimised_for_resampling['temperature'] =  self.fetched_data__optimised_for_resampling['temperature'].astype(int)
+
+		self.fetched_data__optimised_for_resampling['winddirection'] =  self.fetched_data__optimised_for_resampling['winddirection'].astype(int)
+
+		self.fetched_data__optimised_for_resampling['windspeed'] =  self.fetched_data__optimised_for_resampling['windspeed'].astype(int)
+
+		# ----- finnisage! 
+		print("|||| and all that took "+str( time.time() - starttime)+" s ")	
 
 
 
@@ -774,7 +806,7 @@ class gather_resample_metMo_data_make_file:
 		print("-- latlon_unique_combo_couner_i = "+str( latlon_unique_combo_couner_i) )
 
 		# ----- --- finnisage! ------ 
-		print("|||| and all that took "+str( time.time() - starttime)+" ms ")	
+		print("|||| and all that took "+str( time.time() - starttime)+" s ")	
 
 
 
@@ -867,25 +899,43 @@ class gather_resample_metMo_data_make_file:
 
 			# --- --- DATA > JSON > SAVE.txt --- 
 
-
+			print("\t --- converting to json ")
 			# --- convert to json 
-
+			curr_export_item__as_json = json.dumps( curr_export_item )
 
 			# --- save as txt 
 
+			print("\t --- preparing to save  ")
+			# - first generate filename
+			file_path = self.basic_file_path_to_final_file+self.file_name__for__generate_given_24_hours+self.file_name_suffix
 
+			print("\t\t --- file_path : |"+file_path+"|")
+			print("\t --- preparing to save - at time "+str( time.time() - starttime )+" - got json of length |"+str( len(curr_export_item__as_json  ))+"|")
+
+			fp = open( file_path, "w")
+			fp.write( curr_export_item__as_json )
+			fp.flush()
+			fp.close
+			del fp
+
+			print("\t --- done saving at "+str( time.time() - starttime ))
 
 			# --- FOR TESTING … save the file export data, so we can check it later
+			# --- FOR TESTING … save the file export data, so we can check it later
+			# --- FOR TESTING … save the file export data, so we can check it later
 			self.file_saving_items__SAVED_FOR_TESTING.append( curr_export_item )
+			# --- FOR TESTING … save the file export data, so we can check it later
+			# --- FOR TESTING … save the file export data, so we can check it later
+			# --- FOR TESTING … save the file export data, so we can check it later
 
 			# - timing report 
-			print("|||| currently at time "+str( time.time() - starttime)+" ms from start ")
+			print("|||| currently at time "+str( time.time() - starttime)+" s from start ")
 
 			# --- --- sub-finnisage 
 			file_export_metadata_item_index = file_export_metadata_item_index +1 
 
 		# ----------------- finnisage! 
-		print("|||| runme took "+str( time.time() - starttime)+" ms ")		
+		print("|||| runme took "+str( time.time() - starttime)+" s ")		
 		# le fin! 
 
 
@@ -955,6 +1005,9 @@ class gather_resample_metMo_data_make_file:
 			# remove unnneded columns :) 
 			self.prepare_df_for_resampling__include_only_used_columns()
 
+			# reduce values in df, to optimise for export. 
+			self.prepare_for_export__reduce_values_where_relevant()
+
 			# setup start/end dataframes, 
 			# 	which will be inserted into the resampled data, to keep it all the same length
 			self.make_start_and_end_dataframe_rows__with_desired_columns()
@@ -980,7 +1033,7 @@ class gather_resample_metMo_data_make_file:
 
 		# ----------------- finnisage! 
 
-		print("|||| runme took "+str( time.time() - starttime)+" ms ")
+		print("|||| runme took "+str( time.time() - starttime)+" s ")
 
 
 
