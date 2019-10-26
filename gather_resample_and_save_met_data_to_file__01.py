@@ -86,7 +86,7 @@ class gather_resample_metMo_data_make_file:
 
 	# sample time length
 	#  - MAKE SURE THIS IS IN SECONDS! ( otherwise it's bad news for the code … )
-	time_length_of_sample_period__in_seconds = 60*10
+	time_length_of_sample_period__in_seconds = 60*60
 	# in pandas compatible time description format… 
 	time_length_of_sample_period__in_seconds__as_pandas_resampleing_time = str(time_length_of_sample_period__in_seconds)+"S"
 	print2("\n--- time_length_of_sample_period__in_seconds__as_pandas_resampleing_time : "+time_length_of_sample_period__in_seconds__as_pandas_resampleing_time )
