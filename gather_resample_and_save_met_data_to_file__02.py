@@ -103,9 +103,10 @@ class gather_resample_metMo_data_make_file:
 	# database name 
 	database_name = "met_no_data"
 	# database table name 
-	database_table_name__sensor_grid = "sensor_grid"
+	database_table_name__sensor_grid = "met_no_fetched_data__sensor_grid"
 	database_table_name__sensor_grid__short_name = "sensor_grid"
-	database_table_name__low_res_grid = "low_res_grid"
+	database_table_name__low_res_grid = "met_no_fetched_data__low_res_grid"
+	database_table_name__low_res_grid__short_name = "low_res_grid"
 	database_table_name__current__db_table_name = database_table_name__sensor_grid
 
 	# cursor 
@@ -236,7 +237,8 @@ class gather_resample_metMo_data_make_file:
 		# --- --- --- code goes here 
 
 		# no input means do a from-midnight run 
-		if len( self.command_line_arguments__via_sys_argv ) == 1: 
+		# # if len( self.command_line_arguments__via_sys_argv ) == 1: 
+		if len( self.command_line_arguments__via_sys_argv ) == 2: 
 
 			self.kind_of_time_period_we_are_doing = self.kind_of_time_period_we_are_doing__since_midnight
 
@@ -244,24 +246,40 @@ class gather_resample_metMo_data_make_file:
 			self.db_search_endtime = self.db_search_starttime + pd.DateOffset(1)
 
 		# one input means do a run from the given time plus 24 hours 
-		if len( self.command_line_arguments__via_sys_argv ) == 2: 
+		# # if len( self.command_line_arguments__via_sys_argv ) == 2: 
+		if len( self.command_line_arguments__via_sys_argv ) == 3: 
 
 			self.kind_of_time_period_we_are_doing = self.kind_of_time_period_we_are_doing__one_day_only
 
-			self.db_search_starttime = self.check_date_string_validity_and_return_pd_timestmp_if_valid( self.command_line_arguments__via_sys_argv[1] )
+			self.db_search_starttime = self.check_date_string_validity_and_return_pd_timestmp_if_valid( self.command_line_arguments__via_sys_argv[2] )
 			self.db_search_endtime = self.db_search_starttime + pd.DateOffset(1)
 
 		# one input means do a run from the given time plus 24 hours 
-		if len( self.command_line_arguments__via_sys_argv ) == 3: 
+		# # if len( self.command_line_arguments__via_sys_argv ) == 3: 
+		if len( self.command_line_arguments__via_sys_argv ) == 4: 
 
 			self.kind_of_time_period_we_are_doing = self.kind_of_time_period_we_are_doing__date_range
 
-			self.db_search_starttime = self.check_date_string_validity_and_return_pd_timestmp_if_valid( self.command_line_arguments__via_sys_argv[1] )
-			self.db_search_endtime = self.check_date_string_validity_and_return_pd_timestmp_if_valid( self.command_line_arguments__via_sys_argv[2] )		
+			self.db_search_starttime = self.check_date_string_validity_and_return_pd_timestmp_if_valid( self.command_line_arguments__via_sys_argv[2] )
+			self.db_search_endtime = self.check_date_string_validity_and_return_pd_timestmp_if_valid( self.command_line_arguments__via_sys_argv[3] )		
+
+
+		# CHECK ARGV[1] # - using sensor/low res grid data? 
+		# - the indication of wheher we're doing the sensor_grid data, or the
+		#															low res grid data
+		if self.command_line_arguments__via_sys_argv[1] == self.database_table_name__sensor_grid__short_name:
+			# print("\t---  self.command_line_arguments__via_sys_argv == self.database_table_name__sensor_grid__short_name ")
+			self.database_table_name__current__db_table_name = self.database_table_name__sensor_grid
+		elif self.command_line_arguments__via_sys_argv[1] == self.database_table_name__low_res_grid__short_name:
+			# print("\t---  self.command_line_arguments__via_sys_argv == self.database_table_name__low_res_grid__short_name ")
+			self.database_table_name__current__db_table_name = self.database_table_name__low_res_grid
 
 
 		# ----------- finnisage : 
-		print("--- finally : \n\t  kind_of_time_period_we_are_doing : "+self.kind_of_time_period_we_are_doing+" | db_search_starttime/endtime : \n\t\t "+str( self.db_search_starttime )+" \n\t\t ---> "+str( self.db_search_endtime) )
+		print("--- finally : \n\t  kind_of_time_period_we_are_doing : "+self.kind_of_time_period_we_are_doing+" | db_search_starttime/endtime : \n\t\t "+str( self.db_search_starttime )+" \n\t\t ---> "+str( self.db_search_endtime)+" \n\t self.database_table_name__current__db_table_name \n\t\t ---> "+str( self.database_table_name__current__db_table_name ) )
+
+
+
 
 
 
@@ -415,7 +433,7 @@ class gather_resample_metMo_data_make_file:
 		print("\n>>>> generate_sql_query_string() ")
 
 		# generate quary string 
-		self.sql_query = "SELECT * FROM "+self.database_name+" WHERE timestamp > '"+str( self.db_search_starttime )+"' AND timestamp <= '"+str( self.db_search_endtime )+"' ORDER BY forecast_timestamp DESC"
+		self.sql_query = "SELECT * FROM "+self.database_table_name__current__db_table_name+" WHERE timestamp > '"+str( self.db_search_starttime )+"' AND timestamp <= '"+str( self.db_search_endtime )+"' ORDER BY forecast_timestamp DESC"
 		self.print2( "-- -- generated psql query : |"+self.sql_query+"|" )
 
 
@@ -1018,7 +1036,7 @@ class gather_resample_metMo_data_make_file:
 
 		# find the number of sample length periods in given time period 
 		self.find_num_of_sample_periods_that_will_fit_in_start_to_end_time_period()
-
+		# """
 		# for testing … load data from disk 
 		if self.do_data_fetch: 
 			self.load_data_from_csv__convert_to_pd_dataframe()
@@ -1049,7 +1067,7 @@ class gather_resample_metMo_data_make_file:
 		# save data?! 
 		if self.saving_data:
 			self.save_data__locally()
-
+		# """
 
 		# -----  assemble the output files
 		"""
